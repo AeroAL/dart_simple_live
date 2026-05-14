@@ -1,0 +1,66 @@
+name: Build Windows Only
+
+on:
+  workflow_dispatch:          # 允许你在 Actions 页面手动点击运行
+  push:
+    tags:
+      - "win_v*"             # 推送 win_v 开头的标签时也会自动触发，例如 win_v1.0.0
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write        # 如果需要上传到 Release，必须有这个权限
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: master         # 如果要构建 master 分支，写 master；开发分支写 dev
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.38.x"
+          cache: true
+
+      - name: Enable Windows Desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Restore packages
+        run: |
+          cd simple_live_app
+          flutter pub get
+
+      - name: Install flutter_distributor
+        run: dart pub global activate flutter_distributor
+
+      - name: Build Windows
+        run: |
+          cd simple_live_app
+          flutter_distributor package --platform windows --targets zip --skip-clean
+
+      # 上传到 Artifacts（可以在这里直接下载）
+      - name: Upload Windows to Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-package
+          path: |
+            simple_live_app/build/dist/*/*.zip
+
+      # （可选）自动发布到 Release，如果不需要可以删掉下面整段
+      - name: Get version from tag
+        if: startsWith(github.ref, 'refs/tags/')
+        id: version
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Upload to Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          name: "${{ steps.version.outputs.VERSION }}"
+          generate_release_notes: true
+          token: ${{ secrets.TOKEN }}
+          files: |
+            simple_live_app/build/dist/*/*.zip
