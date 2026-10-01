@@ -23,6 +23,12 @@ jobs:
           flutter config --enable-windows-desktop
           flutter create --platforms=windows --project-name ${{ matrix.variant }} probe_tmp
 
+      - name: Silence experimental coroutine (VS18 runners)
+        shell: pwsh
+        run: |
+          $f = "probe_tmp/windows/CMakeLists.txt"
+          (Get-Content $f) -replace 'add_definitions\(-DUNICODE -D_UNICODE\)', "add_definitions(-DUNICODE -D_UNICODE)`nadd_definitions(-D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)" | Set-Content $f
+
       - name: Apply variant template
         shell: pwsh
         run: |
