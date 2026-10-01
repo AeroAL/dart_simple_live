@@ -125,6 +125,7 @@ Future initWindow() async {
 class AppWindowListener with WindowListener {
   @override
   void onWindowClose() async {
+    _writeExitMarker('onWindowClose');
     try {
       if (Get.isRegistered<LiveRoomController>()) {
         await Get.find<LiveRoomController>()
@@ -134,8 +135,17 @@ class AppWindowListener with WindowListener {
     } catch (e) {
       Log.logPrint(e);
     }
+    _writeExitMarker('before-exit');
     //常规关闭流程在原生层有概率挂死，直接结束进程
     exit(0);
+  }
+
+  void _writeExitMarker(String stage) {
+    // 临时诊断：确认 onWindowClose 是否被触发、exit 是否到达
+    try {
+      File(p.join(Directory.systemTemp.path, 'simple_live_exit_flag.txt'))
+          .writeAsStringSync('$stage @ ${DateTime.now()}\n', mode: FileMode.append);
+    } catch (_) {}
   }
 }
 
