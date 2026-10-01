@@ -1,0 +1,12 @@
+name: p2_windowmanager
+description: probe
+publish_to: 'none'
+version: 1.0.0+1
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  window_manager: ^0.5.1
+flutter:
+  uses-material-design: true

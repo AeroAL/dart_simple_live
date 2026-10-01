@@ -1,0 +1,43 @@
+name: Probe Bisect (temporary)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [p0_pure, p1_mediakit, p2_windowmanager, p3_audio, p4_webview, p5_hive_misc]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.38.x"
+          cache: true
+
+      - name: Create probe app
+        run: |
+          flutter config --enable-windows-desktop
+          flutter create --platforms=windows --project-name ${{ matrix.variant }} probe_tmp
+
+      - name: Apply variant template
+        shell: pwsh
+        run: |
+          $src = ".github/probes/${{ matrix.variant }}"
+          if (Test-Path "$src/pubspec.yaml") { Copy-Item "$src/pubspec.yaml" "probe_tmp/pubspec.yaml" -Force }
+          if (Test-Path "$src/lib/main.dart") { Copy-Item "$src/lib/main.dart" "probe_tmp/lib/main.dart" -Force }
+
+      - name: Build probe
+        run: |
+          cd probe_tmp
+          flutter pub get
+          flutter build windows --release
+
+      - name: Upload probe
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.variant }}
+          path: probe_tmp/build/windows/x64/runner/Release/*
