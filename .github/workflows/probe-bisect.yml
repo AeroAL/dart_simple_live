@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [p0_pure, p1_mediakit, p2_windowmanager, p3_audio, p4_webview, p5_hive_misc]
+        variant: [p0_pure, p1_mediakit, p2_windowmanager, p3_audio, p4_webview, p5_hive_misc, p6_terminate, p7_prfix]
     steps:
       - uses: actions/checkout@v4
 
