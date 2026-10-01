@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ffi';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -125,7 +126,6 @@ Future initWindow() async {
 class AppWindowListener with WindowListener {
   @override
   void onWindowClose() async {
-    _writeExitMarker('onWindowClose');
     try {
       if (Get.isRegistered<LiveRoomController>()) {
         await Get.find<LiveRoomController>()
@@ -135,18 +135,24 @@ class AppWindowListener with WindowListener {
     } catch (e) {
       Log.logPrint(e);
     }
-    _writeExitMarker('before-exit');
-    //常规关闭流程在原生层有概率挂死，直接结束进程
+    if (Platform.isWindows) {
+      // flutter_inappwebview 的原生清理会卡死在内核调用上，几分钟后线程触发
+      // 快速异常（fail-fast）弹窗（上游 issue pichillilorenzo/flutter_inappwebview#2884）。
+      // 常规 exit() 走同一条清理链无法绕过，直接终止进程。
+      terminateProcessSelf();
+    }
     exit(0);
   }
+}
 
-  void _writeExitMarker(String stage) {
-    // 临时诊断：确认 onWindowClose 是否被触发、exit 是否到达
-    try {
-      File(p.join(Directory.systemTemp.path, 'simple_live_exit_flag.txt'))
-          .writeAsStringSync('$stage @ ${DateTime.now()}\n', mode: FileMode.append);
-    } catch (_) {}
-  }
+final DynamicLibrary _kernel32 = DynamicLibrary.open('kernel32.dll');
+final int Function() _getCurrentProcess = _kernel32
+    .lookupFunction<IntPtr Function(), int Function()>('GetCurrentProcess');
+final int Function(int, int) _terminateProcess = _kernel32.lookupFunction<
+    IntPtr Function(IntPtr, Uint32), int Function(int, int)>('TerminateProcess');
+
+void terminateProcessSelf() {
+  _terminateProcess(_getCurrentProcess(), 0);
 }
 
 Future initServices() async {
