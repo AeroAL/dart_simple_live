@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:volume_controller/volume_controller.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
-import 'package:screen_brightness/screen_brightness.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -10,9 +9,6 @@ Future<void> main() async {
   } catch (_) {}
   try {
     await WakelockPlus.enable();
-  } catch (_) {}
-  try {
-    await ScreenBrightness().applicationScreenBrightness;
   } catch (_) {}
   runApp(const ProbeApp());
 }
