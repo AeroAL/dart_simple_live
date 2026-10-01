@@ -1051,6 +1051,19 @@ ${error?.stackTrace}''');
     }
   }
 
+  /// 应用退出时主动释放播放器、弹幕等原生资源，
+  /// 避免窗口关闭时进程挂死或触发快速异常（fail-fast）
+  Future<void> disposeForExit() async {
+    autoExitTimer?.cancel();
+    _liveDurationTimer?.cancel();
+    liveDanmaku.stop();
+    danmakuController = null;
+    disposeStream();
+    disposeDanmakuController();
+    await resetSystem();
+    await player.dispose();
+  }
+
   @override
   void onClose() {
     WidgetsBinding.instance.removeObserver(this);

@@ -20,6 +20,7 @@ import 'package:simple_live_app/app/utils/listen_fourth_button.dart';
 import 'package:simple_live_app/models/db/follow_user.dart';
 import 'package:simple_live_app/models/db/follow_user_tag.dart';
 import 'package:simple_live_app/models/db/history.dart';
+import 'package:simple_live_app/modules/live_room/live_room_controller.dart';
 import 'package:simple_live_app/modules/other/debug_log_page.dart';
 import 'package:simple_live_app/routes/app_pages.dart';
 import 'package:simple_live_app/routes/route_path.dart';
@@ -105,6 +106,10 @@ Future initWindow() async {
     return;
   }
   await windowManager.ensureInitialized();
+  //拦截窗口关闭：先释放播放器等原生资源，再结束进程，
+  //否则原生线程会在进程清理阶段挂死或触发快速异常（fail-fast）
+  windowManager.addListener(AppWindowListener());
+  await windowManager.setPreventClose(true);
   WindowOptions windowOptions = const WindowOptions(
     minimumSize: Size(280, 280),
     center: true,
@@ -114,6 +119,24 @@ Future initWindow() async {
     await windowManager.show();
     await windowManager.focus();
   });
+}
+
+///处理窗口关闭：清理资源后终止进程
+class AppWindowListener with WindowListener {
+  @override
+  void onWindowClose() async {
+    try {
+      if (Get.isRegistered<LiveRoomController>()) {
+        await Get.find<LiveRoomController>()
+            .disposeForExit()
+            .timeout(const Duration(seconds: 5));
+      }
+    } catch (e) {
+      Log.logPrint(e);
+    }
+    //常规关闭流程在原生层有概率挂死，直接结束进程
+    exit(0);
+  }
 }
 
 Future initServices() async {
